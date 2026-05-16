@@ -1,0 +1,205 @@
+/* Dark mode overrides — applied when <html> has class "dark" */
+
+html.dark {
+  --bg: #0f1117;
+  --panel: #1a1d27;
+  --line: #2e3347;
+  --ink: #e8eaf0;
+  --muted: #8b92a8;
+  --brand: #4d7fff;
+  --brand-2: #3a6be0;
+  --soft: #1e2235;
+  --chip: #1e2235;
+  --shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+html.dark body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+html.dark header {
+  background: linear-gradient(135deg, #1a2a5e 0%, #0f1a3d 100%);
+}
+
+html.dark .panel,
+html.dark .editor-card,
+html.dark .school-list,
+html.dark .forecast-box,
+html.dark .parameter-box,
+html.dark .kpi,
+html.dark .list-item {
+  background: var(--panel);
+  border-color: var(--line);
+}
+
+html.dark nav a {
+  background: rgba(26, 29, 39, 0.95);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html.dark nav a:hover {
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+html.dark thead th {
+  background: #1e2235;
+  color: #a0aec0;
+}
+
+html.dark tbody tr:nth-child(even) {
+  background: #1e2235;
+}
+
+html.dark tbody td {
+  border-color: #2e3347;
+}
+
+html.dark .table-wrap {
+  border-color: var(--line);
+}
+
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background: #1e2235 !important;
+  border-color: #2e3347 !important;
+  color: var(--ink) !important;
+}
+
+html.dark input:focus,
+html.dark select:focus,
+html.dark textarea:focus {
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px rgba(77, 127, 255, 0.15) !important;
+}
+
+html.dark input:disabled,
+html.dark select:disabled,
+html.dark textarea:disabled {
+  background: #161820 !important;
+  opacity: 0.5 !important;
+}
+
+html.dark button,
+html.dark .button {
+  background: var(--brand);
+  color: white;
+}
+
+html.dark button.secondary,
+html.dark .button.secondary {
+  background: #1e2235;
+  color: var(--brand);
+  border-color: var(--brand);
+}
+
+html.dark button.soft {
+  background: #1e2235;
+  color: #a0aec0;
+}
+
+html.dark button.danger {
+  background: #3b1515;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+
+html.dark .school-item {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html.dark .school-item:hover {
+  background: #1e2235;
+}
+
+html.dark .school-item.active {
+  background: #1a2a5e;
+}
+
+html.dark .school-list-header {
+  background: #1e2235;
+  border-color: var(--line);
+}
+
+html.dark .status {
+  background: #1a2a5e;
+  color: #93c5fd;
+  border-color: #2e4a8f;
+}
+
+html.dark .status.warn {
+  background: #2d1a0a;
+  color: #fdba74;
+  border-color: #7c3a0a;
+}
+
+html.dark .pill {
+  background: #1e2235;
+  color: #93c5fd;
+}
+
+html.dark .bar-track {
+  background: #2e3347;
+}
+
+html.dark .priority-high {
+  background: #3b1515;
+  color: #fca5a5;
+}
+
+html.dark .priority-medium {
+  background: #2d1f0a;
+  color: #fcd34d;
+}
+
+html.dark .priority-low {
+  background: #0a2d1a;
+  color: #6ee7b7;
+}
+
+html.dark .badge.admin {
+  background: #1e1a4e;
+  color: #a5b4fc;
+}
+
+html.dark .badge.user {
+  background: #0a2d1a;
+  color: #6ee7b7;
+}
+
+html.dark .footer {
+  color: var(--muted);
+}
+
+html.dark .readonly {
+  color: var(--muted);
+}
+
+/* Dark mode toggle button */
+.theme-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  cursor: pointer;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--brand);
+}

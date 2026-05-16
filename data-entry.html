@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Furniture Planning System</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="dark.css">
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #d6deea;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #003a8f;
+      --brand-2: #002c6b;
+      --accent: #c1121f;
+      --soft: #eef3fb;
+      --chip: #e7eefb;
+      --shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--ink); }
+    .shell { max-width: 1360px; margin: 0 auto; padding: 22px; }
+    header { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%); color: white; padding: 26px; border-radius: 22px; box-shadow: var(--shadow); margin-bottom: 18px; }
+    .header-top { display: flex; align-items: center; gap: 16px; }
+    .logo { width: 90px; height: 90px; object-fit: contain; background: white; border-radius: 12px; padding: 6px; }
+    .header-tag { display: inline-block; margin-top: 6px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; }
+    header h1 { margin: 0; font-size: 30px; line-height: 1.1; }
+    header p { margin: 14px 0 0; max-width: 840px; line-height: 1.5; opacity: 0.95; }
+    nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; position: sticky; top: 0; z-index: 4; padding: 10px 0; backdrop-filter: blur(8px); }
+    nav a { text-decoration: none; color: var(--ink); background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03); }
+    nav a:hover { border-color: var(--brand); color: var(--brand); }
+    .grid { display: grid; gap: 18px; }
+    .grid.two { grid-template-columns: 1.1fr 1fr; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; overflow: hidden; }
+    .section-title { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 14px; }
+    .muted { color: var(--muted); }
+    .pill { display: inline-flex; align-items: center; background: var(--chip); color: var(--brand-2); border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 700; }
+    button, .button { border: none; border-radius: 12px; padding: 11px 14px; font-weight: 700; cursor: pointer; background: var(--brand); color: white; }
+    button.secondary, .button.secondary { background: white; color: var(--brand); border: 1px solid var(--brand); }
+    button.soft { background: var(--soft); color: var(--brand-2); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .editor-shell { display: grid; grid-template-columns: 280px 1fr; gap: 16px; align-items: start; }
+    .school-list { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; }
+    .school-list-header { padding: 12px 14px; border-bottom: 1px solid var(--line); background: #f9fbff; font-weight: 700; }
+    .school-list-items { max-height: 540px; overflow: auto; }
+    .school-item { width: 100%; text-align: left; border: 0; border-bottom: 1px solid #edf2f7; background: #fff; padding: 12px 14px; cursor: pointer; }
+    .school-item:hover { background: #f8fbff; }
+    .school-item.active { background: #eef4ff; }
+    .school-item strong { display: block; margin-bottom: 4px; color: var(--ink); }
+    .editor-card { border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: #fff; }
+    .editor-card + .editor-card { margin-top: 14px; }
+    .editor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .status { border-radius: 12px; padding: 12px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-size: 14px; }
+    .status.warn { background: #fff7ed; color: #9a3412; border-color: #fdba74; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 16px; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; font-size: 13px; }
+    thead th { position: sticky; top: 0; background: #e6eefc; color: var(--brand-2); text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--line); z-index: 1; }
+    tbody td { border-bottom: 1px solid #edf2f7; padding: 10px; vertical-align: top; }
+    tbody tr:nth-child(even) { background: #fbfcff; }
+    .readonly { color: var(--muted); font-size: 12px; }
+    .toolbar input[type="text"], .toolbar select, .toolbar input[type="number"], .editor-grid input, .editor-grid select, .parameter-toolbar select, .parameter-toolbar input {
+      border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 42px; background: white; color: var(--ink);
+    }
+    .parameter-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+    .parameter-subgrid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px; margin-top:14px; }
+    .parameter-box { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background:#fbfcff; }
+    .parameter-box h3 { margin:0 0 10px; font-size:15px; }
+    @media (max-width: 900px) { .parameter-subgrid { grid-template-columns: 1fr; } }
+    .footer { color: var(--muted); font-size: 13px; text-align: center; margin: 24px 0 8px; }
+    @media (max-width: 1100px) { .grid.two, .editor-shell, .editor-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header id="home">
+      <div class="header-top">
+        <img src="deped_logo.png" alt="DepEd Logo" class="logo">
+        <div>
+          <h1>School Furniture Planning System</h1>
+          <div class="header-tag">Department of Education – Planning System Prototype</div>
+        </div>
+      </div>
+      <p>School chair planning prototype based on room capacity, grade-level rules, and shifting schedules with school-specific parameters.</p>
+    </header>
+   <nav>
+  <a href="index.html">Dashboard</a>
+  <a href="data-entry.html" aria-current="page">Data Entry &amp; Parameters</a>
+  <a href="reports.html">Reports</a>
+  <a href="forecast.html">Forecast</a>
+</nav>
+
+    <section id="data-entry" class="panel">
+      <div class="section-title">
+        <div>
+          <h2 style="margin:0 0 6px;">Data Entry</h2>
+          <div class="muted">Select a school from the list, then edit grouped fields on the right.</div>
+        </div>
+        <span class="pill" id="rowCounter">0 schools</span>
+      </div>
+      <div class="toolbar" style="margin-bottom:12px;">
+        <input id="searchInput" type="text" placeholder="Search school name...">
+        <button id="demoBtn" class="soft" type="button">Load Demo Inputs</button>
+        <button id="addBtn" class="secondary" type="button">Add School</button>
+        <button id="exportBtn" class="secondary" type="button">Export CSV</button>
+      </div>
+      <div id="emptyNotice" class="status warn" style="display:none; margin-bottom:12px;">No chair planning inputs yet.</div>
+      <div class="editor-shell">
+        <div class="school-list">
+          <div class="school-list-header">Schools in scope</div>
+          <div class="school-list-items" id="schoolList"></div>
+        </div>
+        <div>
+          <div class="editor-card">
+            <div class="section-title" style="margin-bottom:10px;">
+              <div>
+                <h3 id="editorTitle" style="margin:0 0 4px;">School editor</h3>
+                <div class="muted" id="editorSubtitle">Select a school to edit planning inputs.</div>
+              </div>
+              <button id="deleteSelectedBtn" class="secondary" type="button">Delete School</button>
+            </div>
+            <div class="editor-grid" id="editorForm"></div>
+          </div>
+          <div class="editor-card">
+            <h3 style="margin:0 0 10px;">Selected school summary</h3>
+            <div class="table-wrap">
+              <table style="min-width:760px;">
+                <thead>
+                  <tr>
+                    <th>School</th>
+                    <th>Primary Capacity</th>
+                    <th>Secondary Capacity</th>
+                    <th>Primary Gap</th>
+                    <th>Secondary Gap</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
+                <tbody id="selectedSummaryBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="parameters" class="panel" style="margin-top:18px;">
+      <div class="section-title">
+        <div>
+          <h2 style="margin:0 0 6px;">Parameters</h2>
+          <div class="muted" id="paramScopeLabel">Edit default settings for all schools or set custom rules for one school only.</div>
+        </div>
+        <span class="pill">Customizable Rules</span>
+      </div>
+      <div class="parameter-toolbar">
+        <label for="parameterSchoolSelect"><strong>Apply to:</strong></label>
+        <select id="parameterSchoolSelect"></select>
+        <button id="resetSchoolParamsBtn" class="secondary" type="button">Reset Selected to Default</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Grade Level</th>
+              <th>Room Length (m)</th>
+              <th>Room Width (m)</th>
+              <th>Target Chairs per Room</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="paramBody"></tbody>
+        </table>
+      </div>
+      <div class="parameter-subgrid">
+        <div class="parameter-box">
+          <h3>General Room Furniture</h3>
+          <div class="editor-grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+            <div class="field">
+              <label for="teacherTablesPerRoom">Teacher Tables per Room</label>
+              <input id="teacherTablesPerRoom" min="0" step="1" type="number"/>
+            </div>
+            <div class="field">
+              <label for="teacherChairsPerRoom">Teacher Chairs per Room</label>
+              <input id="teacherChairsPerRoom" min="0" step="1" type="number"/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">Chair planning prototype.</div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'legazpi-chair-planning-site-v4';
+    const rawSeedSchools = [
+      {"region":"Region V","division":"Legazpi City","schoolId":"302259","schoolName":"Homapon High School","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":2},
+      {"region":"Region V","division":"Legazpi City","schoolId":"502624","schoolName":"San Francisco IS","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":3},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114493","schoolName":"Rawis ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":4},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114476","schoolName":"Buraguis ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":1},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114491","schoolName":"Matanag ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":5},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114458","schoolName":"Bogna Elementary School","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":6},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114472","schoolName":"Estanza ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":7},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114490","schoolName":"Gogon CS","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2026,"ranking":8},
+      {"region":"Region V","division":"Legazpi City","schoolId":"306333","schoolName":"Bagumbayan-East Washington National High School","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2027,"ranking":1},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114460","schoolName":"Homapon ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2027,"ranking":2},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114466","schoolName":"Bagumbayan CS","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2027,"ranking":3},
+      {"region":"Region V","division":"Legazpi City","schoolId":"100182","schoolName":"Banquerohan Resettlement Elementary School","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2027,"ranking":4},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114465","schoolName":"Bagacay ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2027,"ranking":5},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114487","schoolName":"Bigaa Elementary School","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2027,"ranking":6},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114482","schoolName":"Maslog ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2028,"ranking":1},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114474","schoolName":"Taysan ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2029,"ranking":1},
+      {"region":"Region V","division":"Legazpi City","schoolId":"114459","schoolName":"Bogtong ES","municipality":"LEGAZPI CITY (Capital)","proposedFundingYear":2030,"ranking":1}
+    ];
+
+    const defaultParameters = {
+      levels: [
+        { level: 'Kinder', roomLength: 7, roomWidth: 9, chairsPerRoom: 45, notes: 'Standard room preset' },
+        { level: 'G1-3', roomLength: 7, roomWidth: 9, chairsPerRoom: 45, notes: 'Standard room preset' },
+        { level: 'G4-6', roomLength: 7, roomWidth: 9, chairsPerRoom: 45, notes: 'Standard room preset' },
+        { level: 'JHS', roomLength: 7, roomWidth: 9, chairsPerRoom: 45, notes: 'Standard room preset' },
+        { level: 'SHS', roomLength: 7, roomWidth: 9, chairsPerRoom: 45, notes: 'Standard room preset' }
+      ],
+      teacherTablesPerRoom: 1,
+      teacherChairsPerRoom: 1
+    };
+
+    function cloneLevels(levels) { return levels.map(item => ({ ...item })); }
+    function cloneParameterSet(set) { return { levels: cloneLevels(set.levels), teacherTablesPerRoom: Number(set.teacherTablesPerRoom ?? 1), teacherChairsPerRoom: Number(set.teacherChairsPerRoom ?? 1) }; }
+    function getParameterSetForSchool(school) { return school?.customParameters || state.parameters; }
+    function createSeedSchool(row) {
+      return {
+        ...row,
+        kinderRooms: '', g13Rooms: '', g46Rooms: '', jhsRooms: '', shsRooms: '',
+        primaryMorningStudents: '', primaryAfternoonStudents: '', secondaryMorningStudents: '', secondaryAfternoonStudents: '',
+        existingPrimaryChairs: '', existingSecondaryChairs: '', plannedPrimaryChairs: 0, plannedSecondaryChairs: 0,
+        repairStatus: '', adminRemarks: '', fundSource: '', estimatedBudget: '', completionDate: '',
+        customParameters: null
+      };
+    }
+
+    const state = {
+      schools: [],
+      parameters: structuredClone(defaultParameters),
+      parameterTarget: '__default__',
+      selectedSchoolIndex: 0
+    };
+
+    const els = {
+      schoolList: document.getElementById('schoolList'),
+      editorForm: document.getElementById('editorForm'),
+      editorTitle: document.getElementById('editorTitle'),
+      editorSubtitle: document.getElementById('editorSubtitle'),
+      selectedSummaryBody: document.getElementById('selectedSummaryBody'),
+      paramBody: document.getElementById('paramBody'),
+      parameterSchoolSelect: document.getElementById('parameterSchoolSelect'),
+      paramScopeLabel: document.getElementById('paramScopeLabel'),
+      rowCounter: document.getElementById('rowCounter'),
+      searchInput: document.getElementById('searchInput'),
+      emptyNotice: document.getElementById('emptyNotice'),
+      deleteSelectedBtn: document.getElementById('deleteSelectedBtn')
+    };
+
+    function applyParsedState(parsed) {
+      state.schools = (parsed.schools || rawSeedSchools.map(createSeedSchool));
+      state.parameters = { ...structuredClone(defaultParameters), ...(parsed.parameters || {}) };
+      state.parameters.levels = parsed.parameters?.levels || structuredClone(defaultParameters.levels);
+      state.parameters.teacherTablesPerRoom = Number(parsed.parameters?.teacherTablesPerRoom ?? 1);
+      state.parameters.teacherChairsPerRoom = Number(parsed.parameters?.teacherChairsPerRoom ?? 1);
+      (parsed.schools || []).forEach(s => { if (s.customParameters) { s.customParameters = { ...cloneParameterSet(state.parameters), ...s.customParameters, levels: s.customParameters.levels || cloneLevels(state.parameters.levels), teacherTablesPerRoom: Number(s.customParameters.teacherTablesPerRoom ?? 1), teacherChairsPerRoom: Number(s.customParameters.teacherChairsPerRoom ?? 1) }; } });
+      state.parameterTarget = parsed.parameterTarget || '__default__';
+      state.selectedSchoolIndex = Math.max(0, Math.min(parsed.selectedSchoolIndex || 0, state.schools.length - 1));
+    }
+
+    function loadStateFromLocalStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { applyParsedState(JSON.parse(saved)); return true; } catch (e) { console.warn('localStorage parse error', e); }
+      }
+      return false;
+    }
+
+    async function loadState() {
+      // Show cached data immediately so the UI isn't blank while Supabase loads
+      if (!loadStateFromLocalStorage()) {
+        state.schools = rawSeedSchools.map(createSeedSchool);
+        state.parameters = structuredClone(defaultParameters);
+        state.parameterTarget = '__default__';
+        state.selectedSchoolIndex = 0;
+      }
+      renderAll();
+
+      // Then fetch fresh data from Supabase in the background
+      try {
+        const [dbSchools, dbParams] = await Promise.all([dbLoadSchools(), dbLoadParameters()]);
+        if (dbSchools !== null && dbSchools.length > 0) {
+          state.schools = dbSchools;
+          state.selectedSchoolIndex = Math.max(0, Math.min(state.selectedSchoolIndex, state.schools.length - 1));
+        }
+        if (dbParams !== null) {
+          state.parameters = { ...structuredClone(defaultParameters), ...dbParams };
+          state.parameters.levels = dbParams.levels || structuredClone(defaultParameters.levels);
+          state.parameters.teacherTablesPerRoom = Number(dbParams.teacherTablesPerRoom ?? 1);
+          state.parameters.teacherChairsPerRoom = Number(dbParams.teacherChairsPerRoom ?? 1);
+        }
+        // Persist fresh data to localStorage as cache
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          schools: state.schools, parameters: state.parameters,
+          parameterTarget: state.parameterTarget, selectedSchoolIndex: state.selectedSchoolIndex
+        }));
+        renderAll();
+      } catch (err) {
+        console.warn('Supabase load failed, using cached data.', err);
+      }
+    }
+
+    function saveLocalCache() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        schools: state.schools, parameters: state.parameters,
+        parameterTarget: state.parameterTarget, selectedSchoolIndex: state.selectedSchoolIndex
+      }));
+    }
+
+    // Debounce timer for parameter saves
+    let _paramSaveTimer = null;
+
+    async function saveState(changedSchool = null, deletedSchoolId = null) {
+      saveLocalCache(); // instant local save
+
+      // Push to Supabase in the background
+      try {
+        if (deletedSchoolId) {
+          await dbDeleteSchool(deletedSchoolId);
+          await dbLogAction('DELETE_SCHOOL', `Deleted school ID: ${deletedSchoolId}`);
+        } else if (changedSchool) {
+          await dbSaveSchool(changedSchool);
+          await dbLogAction('SAVE_SCHOOL', `Saved: ${changedSchool.schoolName || changedSchool.schoolId}`);
+        } else {
+          // Bulk save all schools (e.g. demo load or reset)
+          await Promise.all(state.schools.map(s => dbSaveSchool(s)));
+          await dbLogAction('BULK_SAVE', `Bulk saved ${state.schools.length} schools`);
+        }
+        await dbSaveParameters(state.parameters);
+      } catch (err) {
+        console.warn('Supabase save failed.', err);
+      }
+    }
+
+    function numberOrZero(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
+    function formatNumber(value) { return new Intl.NumberFormat().format(numberOrZero(value)); }
+    function escapeHtml(value) { return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function csvEscape(value) { const text = String(value ?? ''); return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text; }
+
+    function getSelectedSchool() { return state.schools[state.selectedSchoolIndex] || state.schools[0]; }
+    function getActiveLevels(school) { return school?.customParameters?.levels || state.parameters.levels; }
+    function getLevelRule(level, school) { return getActiveLevels(school).find(item => item.level === level) || state.parameters.levels[0]; }
+    function priorityLabel(totalGap) { if (totalGap >= 100) return 'High'; if (totalGap >= 30) return 'Medium'; return 'Low'; }
+    function priorityClass(label) { return label === 'High' ? 'priority-high' : label === 'Medium' ? 'priority-medium' : 'priority-low'; }
+
+    function computeSchool(school) {
+      const kinderCap = numberOrZero(school.kinderRooms) * numberOrZero(getLevelRule('Kinder', school).chairsPerRoom);
+      const g13Cap = numberOrZero(school.g13Rooms) * numberOrZero(getLevelRule('G1-3', school).chairsPerRoom);
+      const g46Cap = numberOrZero(school.g46Rooms) * numberOrZero(getLevelRule('G4-6', school).chairsPerRoom);
+      const jhsCap = numberOrZero(school.jhsRooms) * numberOrZero(getLevelRule('JHS', school).chairsPerRoom);
+      const shsCap = numberOrZero(school.shsRooms) * numberOrZero(getLevelRule('SHS', school).chairsPerRoom);
+      const primaryCapacity = kinderCap + g13Cap + g46Cap;
+      const secondaryCapacity = jhsCap + shsCap;
+      const primaryDemand = Math.max(numberOrZero(school.primaryMorningStudents), numberOrZero(school.primaryAfternoonStudents));
+      const secondaryDemand = Math.max(numberOrZero(school.secondaryMorningStudents), numberOrZero(school.secondaryAfternoonStudents));
+      const requiredPrimaryChairs = Math.min(primaryCapacity, primaryDemand || primaryCapacity);
+      const requiredSecondaryChairs = Math.min(secondaryCapacity, secondaryDemand || secondaryCapacity);
+      const gapPrimary = Math.max(0, requiredPrimaryChairs - numberOrZero(school.existingPrimaryChairs));
+      const gapSecondary = Math.max(0, requiredSecondaryChairs - numberOrZero(school.existingSecondaryChairs));
+      const remainingPrimaryGap = Math.max(0, gapPrimary - numberOrZero(school.plannedPrimaryChairs));
+      const remainingSecondaryGap = Math.max(0, gapSecondary - numberOrZero(school.plannedSecondaryChairs));
+      const totalRemainingGap = remainingPrimaryGap + remainingSecondaryGap;
+      const priority = priorityLabel(totalRemainingGap);
+      return { ...school, kinderCap, g13Cap, g46Cap, jhsCap, shsCap, primaryCapacity, secondaryCapacity, primaryDemand, secondaryDemand, requiredPrimaryChairs, requiredSecondaryChairs, gapPrimary, gapSecondary, remainingPrimaryGap, remainingSecondaryGap, totalRemainingGap, priority };
+    }
+
+    function renderSchoolList() {
+      const query = els.searchInput.value.trim().toLowerCase();
+      const filtered = state.schools.map((school, index) => ({ school, index })).filter(item => !query || item.school.schoolName.toLowerCase().includes(query));
+      els.rowCounter.textContent = `${filtered.length} school(s)`;
+      els.schoolList.innerHTML = filtered.map(item => `
+        <button class="school-item ${item.index === state.selectedSchoolIndex ? 'active' : ''}" data-select-school="${item.index}" type="button">
+          <strong>${escapeHtml(item.school.schoolName)}</strong>
+          <div class="readonly">${escapeHtml(item.school.schoolId || '')} · FY ${escapeHtml(item.school.proposedFundingYear || '')}</div>
+        </button>
+      `).join('') || '<div class="list-item">No matching school.</div>';
+    }
+
+    function makeField(label, field, type='number', full=false) {
+      const school = getSelectedSchool();
+      const value = school?.[field] ?? '';
+      return `<div class="field ${full ? 'full' : ''}"><label>${label}</label><input type="${type}" ${type==='number' ? 'min="0"' : ''} data-school-field="${field}" value="${escapeHtml(value)}"></div>`;
+    }
+
+    function makeSelectField(label, field, options, full=false) {
+      const school = getSelectedSchool();
+      const value = school?.[field] ?? '';
+      const opts = options.map(o => `<option value="${escapeHtml(o)}" ${value === o ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('');
+      return `<div class="field ${full ? 'full' : ''}"><label>${label}</label><select data-school-field="${field}"><option value="">-- Select --</option>${opts}</select></div>`;
+    }
+
+    function makeTextareaField(label, field) {
+      const school = getSelectedSchool();
+      const value = school?.[field] ?? '';
+      return `<div class="field full"><label>${label}</label><textarea data-school-field="${field}" rows="2" style="width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;resize:vertical;">${escapeHtml(value)}</textarea></div>`;
+    }
+
+    function renderEditor() {
+      const school = getSelectedSchool();
+      if (!school) return;
+      els.editorTitle.textContent = school.schoolName || 'School editor';
+      els.editorSubtitle.textContent = `${school.schoolId || 'No ID'} · ${school.municipality || 'Legazpi City'}`;
+      els.editorForm.innerHTML = [
+        makeField('School ID', 'schoolId', 'text'),
+        makeField('School Name', 'schoolName', 'text'),
+        makeField('Funding Year', 'proposedFundingYear'),
+        makeField('Kinder Rooms', 'kinderRooms'),
+        makeField('G1-3 Rooms', 'g13Rooms'),
+        makeField('G4-6 Rooms', 'g46Rooms'),
+        makeField('JHS Rooms', 'jhsRooms'),
+        makeField('SHS Rooms', 'shsRooms'),
+        makeField('Primary AM Students', 'primaryMorningStudents'),
+        makeField('Primary PM Students', 'primaryAfternoonStudents'),
+        makeField('Secondary AM Students', 'secondaryMorningStudents'),
+        makeField('Secondary PM Students', 'secondaryAfternoonStudents'),
+        makeField('Existing Primary Chairs', 'existingPrimaryChairs'),
+        makeField('Existing Secondary Chairs', 'existingSecondaryChairs'),
+        makeField('Planned Primary Chairs', 'plannedPrimaryChairs'),
+        makeField('Planned Secondary Chairs', 'plannedSecondaryChairs'),
+        makeTextareaField('Admin Remarks', 'adminRemarks')
+      ].join('');
+
+      const row = computeSchool(school);
+      els.selectedSummaryBody.innerHTML = `
+        <tr>
+          <td><strong>${escapeHtml(row.schoolName)}</strong><div class="readonly">${escapeHtml(row.schoolId || '')}</div></td>
+          <td>${formatNumber(row.primaryCapacity)}</td>
+          <td>${formatNumber(row.secondaryCapacity)}</td>
+          <td>${formatNumber(row.remainingPrimaryGap)}</td>
+          <td>${formatNumber(row.remainingSecondaryGap)}</td>
+          <td><span class="priority-badge ${priorityClass(row.priority)}">${row.priority}</span></td>
+        </tr>`;
+    }
+
+    function renderSummary() {
+      const school = getSelectedSchool();
+      if (!school) return;
+      const row = computeSchool(school);
+      els.selectedSummaryBody.innerHTML = `
+        <tr>
+          <td><strong>${escapeHtml(row.schoolName)}</strong><div class="readonly">${escapeHtml(row.schoolId || '')}</div></td>
+          <td>${formatNumber(row.primaryCapacity)}</td>
+          <td>${formatNumber(row.secondaryCapacity)}</td>
+          <td>${formatNumber(row.remainingPrimaryGap)}</td>
+          <td>${formatNumber(row.remainingSecondaryGap)}</td>
+          <td><span class="priority-badge ${priorityClass(row.priority)}">${row.priority}</span></td>
+        </tr>`;
+    }
+
+    function renderParameters() {
+      const school = state.parameterTarget === '__default__' ? null : state.schools.find(item => item.schoolId === state.parameterTarget);
+      const activeSet = getParameterSetForSchool(school);
+      const levels = activeSet.levels;
+      els.paramScopeLabel.textContent = school ? `Customizing rules for ${school.schoolName}.` : 'Customizing default rules for all schools.';
+      els.parameterSchoolSelect.innerHTML = `<option value="__default__">Default settings for all schools</option>` + state.schools.map(item => `<option value="${escapeHtml(item.schoolId)}" ${state.parameterTarget === item.schoolId ? 'selected' : ''}>${escapeHtml(item.schoolName)}</option>`).join('');
+      els.paramBody.innerHTML = levels.map((row,index) => `
+        <tr>
+          <td><strong>${row.level}</strong></td>
+          <td><input type="number" min="0" step="0.1" data-param-index="${index}" data-param-field="roomLength" value="${row.roomLength}"></td>
+          <td><input type="number" min="0" step="0.1" data-param-index="${index}" data-param-field="roomWidth" value="${row.roomWidth}"></td>
+          <td><input type="number" min="0" step="1" data-param-index="${index}" data-param-field="chairsPerRoom" value="${row.chairsPerRoom}"></td>
+          <td><input type="text" data-param-index="${index}" data-param-field="notes" value="${escapeHtml(row.notes)}"></td>
+        </tr>`).join('');
+      document.getElementById('teacherTablesPerRoom').value = Number(activeSet.teacherTablesPerRoom ?? 1);
+      document.getElementById('teacherChairsPerRoom').value = Number(activeSet.teacherChairsPerRoom ?? 1);
+    }
+
+    function renderAll() {
+      renderSchoolList();
+      renderEditor();
+      renderParameters();
+      renderSummary();
+      const hasInputs = state.schools.some(item => numberOrZero(item.kinderRooms) > 0 || numberOrZero(item.g13Rooms) > 0 || numberOrZero(item.g46Rooms) > 0 || numberOrZero(item.jhsRooms) > 0 || numberOrZero(item.shsRooms) > 0 || numberOrZero(item.existingPrimaryChairs) > 0 || numberOrZero(item.existingSecondaryChairs) > 0);
+      els.emptyNotice.style.display = hasInputs ? 'none' : 'block';
+    }
+
+    function addSchool() {
+      const newSchool = createSeedSchool({ region:'Region V', division:'Legazpi City', schoolId: 'new-' + Date.now(), schoolName:'New School', municipality:'Legazpi City', proposedFundingYear:'', ranking:'' });
+      state.schools.push(newSchool);
+      state.selectedSchoolIndex = state.schools.length - 1;
+      saveState(newSchool); renderAll();
+    }
+    function removeSelectedSchool() {
+      if (!state.schools.length) return;
+      const school = getSelectedSchool();
+      if (!confirm(`Delete ${school.schoolName}?`)) return;
+      const deletedId = school.schoolId;
+      state.schools.splice(state.selectedSchoolIndex,1);
+      state.selectedSchoolIndex = Math.max(0, state.selectedSchoolIndex - 1);
+      saveState(null, deletedId); renderAll();
+    }
+    function loadDemoInputs() {
+      state.schools = state.schools.map((school,index) => {
+        const isHigh = school.schoolName.toUpperCase().includes('HIGH SCHOOL') || school.schoolName.toUpperCase().includes('NATIONAL HIGH SCHOOL') || school.schoolName.toUpperCase().includes(' IS');
+        return {
+          ...school,
+          kinderRooms: isHigh ? 0 : 2 + (index % 2),
+          g13Rooms: isHigh ? 0 : 4 + (index % 3),
+          g46Rooms: isHigh ? 0 : 3 + (index % 2),
+          jhsRooms: isHigh ? 7 + (index % 3) : 0,
+          shsRooms: isHigh ? 2 + (index % 2) : 0,
+          primaryMorningStudents: isHigh ? 0 : 280 + (index % 4) * 25,
+          primaryAfternoonStudents: isHigh ? 0 : 220 + (index % 3) * 20,
+          secondaryMorningStudents: isHigh ? 380 + (index % 4) * 35 : 0,
+          secondaryAfternoonStudents: isHigh ? 320 + (index % 3) * 25 : 0,
+          existingPrimaryChairs: isHigh ? 0 : 260 + (index % 5) * 15,
+          existingSecondaryChairs: isHigh ? 280 + (index % 5) * 18 : 0,
+          plannedPrimaryChairs: isHigh ? 0 : (index % 4) * 10,
+          plannedSecondaryChairs: isHigh ? (index % 4) * 12 : 0
+        };
+      });
+      saveState(); renderAll();
+    }
+    function resetBrowserData() {
+      if (!confirm('This will remove your saved browser data and go back to the seed list. Continue?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      loadState();
+    }
+    function exportCSV() {
+      const computed = state.schools.map(computeSchool);
+      const columns = ['teacherTablesPerRoom','teacherChairsPerRoom','schoolId','schoolName','kinderRooms','g13Rooms','g46Rooms','jhsRooms','shsRooms','primaryMorningStudents','primaryAfternoonStudents','secondaryMorningStudents','secondaryAfternoonStudents','existingPrimaryChairs','existingSecondaryChairs','plannedPrimaryChairs','plannedSecondaryChairs','primaryCapacity','secondaryCapacity','requiredPrimaryChairs','requiredSecondaryChairs','remainingPrimaryGap','remainingSecondaryGap','totalRemainingGap','priority'];
+      const lines = [columns.join(',')];
+      computed.forEach(row => { const set = getParameterSetForSchool(row); const enriched = { ...row, teacherTablesPerRoom: Number(set.teacherTablesPerRoom ?? 1), teacherChairsPerRoom: Number(set.teacherChairsPerRoom ?? 1) }; lines.push(columns.map(col => csvEscape(enriched[col])).join(',')); });
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = 'legazpi_school_chair_data_v4.csv'; link.click(); URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-select-school]');
+      if (button) { state.selectedSchoolIndex = Number(button.dataset.selectSchool); saveLocalCache(); renderAll(); }
+    });
+
+    document.addEventListener('change', (event) => {
+      const target = event.target;
+      if (target.dataset.schoolField) {
+        const school = getSelectedSchool();
+        if (!school) return;
+        school[target.dataset.schoolField] = target.value;
+        saveState(school);
+        renderSummary();
+        renderSchoolList();
+      }
+    });
+
+    document.addEventListener('input', (event) => {
+      const target = event.target;
+      if (target.dataset.schoolField) {
+        // Only update state and the summary — do NOT re-render the form
+        // (re-rendering the form resets focus and causes the 1-letter bug)
+        const school = getSelectedSchool();
+        if (!school) return;
+        school[target.dataset.schoolField] = target.value;
+        renderSummary();
+        return;
+      }
+      if (target.dataset.paramIndex !== undefined && target.dataset.paramField) {
+        const school = state.parameterTarget === '__default__' ? null : state.schools.find(item => item.schoolId === state.parameterTarget);
+        const levels = school ? (school.customParameters?.levels || (school.customParameters = { levels: cloneLevels(state.parameters.levels) }).levels) : state.parameters.levels;
+        const row = levels[Number(target.dataset.paramIndex)];
+        row[target.dataset.paramField] = target.dataset.paramField === 'notes' ? target.value : Number(target.value);
+        if (school && !school.customParameters) school.customParameters = { levels };
+        // Don't re-render params table on every keystroke either
+        return;
+      }
+      if (target.id === 'teacherTablesPerRoom' || target.id === 'teacherChairsPerRoom') {
+        const school = state.parameterTarget === '__default__' ? null : state.schools.find(item => item.schoolId === state.parameterTarget);
+        const activeSet = school ? (school.customParameters || (school.customParameters = cloneParameterSet(state.parameters))) : state.parameters;
+        activeSet[target.id] = Number(target.value || 0);
+        return;
+      }
+    });
+
+    // Save to Supabase when user leaves a field (blur)
+    document.addEventListener('focusout', (event) => {
+      const target = event.target;
+      if (target.dataset.schoolField) {
+        const school = getSelectedSchool();
+        if (school) saveState(school);
+      }
+      if ((target.dataset.paramIndex !== undefined && target.dataset.paramField) ||
+           target.id === 'teacherTablesPerRoom' || target.id === 'teacherChairsPerRoom') {
+        const school = state.parameterTarget === '__default__' ? null : state.schools.find(item => item.schoolId === state.parameterTarget);
+        saveState(school || null);
+      }
+    });
+
+    els.searchInput.addEventListener('input', renderSchoolList);
+    els.parameterSchoolSelect.addEventListener('change', (event) => { state.parameterTarget = event.target.value; saveLocalCache(); renderParameters(); });
+    document.getElementById('resetSchoolParamsBtn').addEventListener('click', () => {
+      if (state.parameterTarget === '__default__') { state.parameters = structuredClone(defaultParameters); saveState(); renderAll(); return; }
+      const school = state.schools.find(item => item.schoolId === state.parameterTarget); if (!school) return; school.customParameters = null; saveState(school); renderAll();
+    });
+    document.getElementById('demoBtn').addEventListener('click', loadDemoInputs);
+    document.getElementById('addBtn').addEventListener('click', addSchool);
+    document.getElementById('exportBtn').addEventListener('click', exportCSV);
+    els.deleteSelectedBtn.addEventListener('click', removeSelectedSchool);
+
+    // Boot: require login, then load data and apply role restrictions
+    initPage().then(auth => {
+      if (!auth) return;
+      // Users are not allowed on this page — redirect to dashboard
+      if (auth.role === 'user') {
+        window.location.href = 'index.html';
+        return;
+      }
+      loadState();
+    });
+  </script>
+  <script src="theme.js"></script>
+</body>
+</html>

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel – School Furniture Planning System</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase.js"></script>
+  <script src="auth.js"></script>
+  <link rel="stylesheet" href="dark.css">
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #d6deea;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --brand: #003a8f;
+      --brand-2: #002c6b;
+      --accent: #c1121f;
+      --soft: #eef3fb;
+      --chip: #e7eefb;
+      --shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--bg); color: var(--ink); }
+    .shell { max-width: 1000px; margin: 0 auto; padding: 22px; }
+    header { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%); color: white; padding: 26px; border-radius: 22px; box-shadow: var(--shadow); margin-bottom: 18px; }
+    .header-top { display: flex; align-items: center; gap: 16px; }
+    .logo { width: 90px; height: 90px; object-fit: contain; background: white; border-radius: 12px; padding: 6px; }
+    .header-tag { display: inline-block; margin-top: 6px; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 700; }
+    header h1 { margin: 0; font-size: 30px; line-height: 1.1; }
+    nav { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; position: sticky; top: 0; z-index: 4; padding: 10px 0; backdrop-filter: blur(8px); }
+    nav a { text-decoration: none; color: var(--ink); background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; font-size: 14px; font-weight: 700; box-shadow: 0 4px 10px rgba(15,23,42,0.03); }
+    nav a:hover { border-color: var(--brand); color: var(--brand); }
+    nav a[aria-current] { background: var(--brand); color: white; border-color: var(--brand); }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin-bottom: 18px; }
+    .section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .section-title h2 { margin: 0 0 4px; font-size: 20px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .pill { display: inline-flex; align-items: center; background: var(--chip); color: var(--brand-2); border-radius: 999px; padding: 7px 12px; font-size: 12px; font-weight: 700; }
+    button { border: none; border-radius: 12px; padding: 10px 16px; font-weight: 700; cursor: pointer; background: var(--brand); color: white; font-size: 13px; }
+    button.secondary { background: white; color: var(--brand); border: 1px solid var(--brand); }
+    button.danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+    .field label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+    .field input, .field select {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px;
+      padding: 10px 12px; font-size: 14px; color: var(--ink); background: white;
+    }
+    .field input:focus, .field select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,58,143,0.1); }
+    .msg { border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+    .msg.success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .msg.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { background: #e6eefc; color: var(--brand-2); text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+    tbody td { padding: 10px 12px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+    tbody tr:nth-child(even) { background: #fbfcff; }
+    .badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
+    .badge.admin { background: #e0e7ff; color: #3730a3; }
+    .badge.user { background: #dcfce7; color: #166534; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 14px; }
+    .empty { text-align: center; padding: 32px; color: var(--muted); }
+    .footer { color: var(--muted); font-size: 13px; text-align: center; margin: 24px 0 8px; }
+    @media (max-width: 700px) { .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="header-top">
+        <img src="deped_logo.png" alt="DepEd Logo" class="logo">
+        <div>
+          <h1>School Furniture Planning System</h1>
+          <div class="header-tag">Admin Panel</div>
+        </div>
+      </div>
+    </header>
+
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="data-entry.html">Data Entry &amp; Parameters</a>
+      <a href="reports.html">Reports</a>
+      <a href="forecast.html">Forecast</a>
+      <a href="admin.html" aria-current="page">Admin</a>
+    </nav>
+
+    <!-- Create User -->
+    <div class="panel">
+      <div class="section-title">
+        <div>
+          <h2>User Management</h2>
+          <div class="muted">Create and manage system accounts.</div>
+        </div>
+        <span class="pill" id="userCount">0 accounts</span>
+      </div>
+
+      <div class="msg success" id="successMsg"></div>
+      <div class="msg error" id="errorMsg"></div>
+
+      <div class="form-grid" style="margin-bottom:20px;">
+        <div class="field">
+          <label for="newUsername">Username</label>
+          <input type="text" id="newUsername" placeholder="e.g. user2">
+        </div>
+        <div class="field">
+          <label for="newPassword">Password</label>
+          <input type="password" id="newPassword" placeholder="Min. 6 characters">
+        </div>
+        <div class="field">
+          <label for="newRole">Role</label>
+          <select id="newRole">
+            <option value="user">User (view only)</option>
+            <option value="admin">Admin (full access)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="createUserBtn" type="button">+ Create Account</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Role</th>
+              <th>User ID</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <tr><td colspan="4" class="empty">Loading accounts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Change Password -->
+    <div class="panel">
+      <div class="section-title">
+        <div>
+          <h2>Change Password</h2>
+          <div class="muted">Update the password for any account.</div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="pwUsername">Username</label>
+          <select id="pwUsername"></select>
+        </div>
+        <div class="field">
+          <label for="newPw">New Password</label>
+          <input type="password" id="newPw" placeholder="Min. 6 characters">
+        </div>
+        <div class="field">
+          <label for="confirmPw">Confirm Password</label>
+          <input type="password" id="confirmPw" placeholder="Repeat password">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button id="changePwBtn" type="button" class="secondary">Update Password</button>
+        </div>
+      </div>
+      <div class="msg success" id="pwSuccessMsg" style="margin-top:12px;"></div>
+      <div class="msg error" id="pwErrorMsg" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- Audit Log -->
+    <div class="panel">
+      <div class="section-title">
+        <div>
+          <h2>Audit Log</h2>
+          <div class="muted">Track who changed what and when.</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <select id="auditUserFilter" style="border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:white;color:var(--ink);">
+            <option value="">All Users</option>
+          </select>
+          <button id="refreshAuditBtn" class="secondary" type="button">↻ Refresh</button>
+          <button id="clearAuditBtn" class="danger" type="button">Clear Log</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody id="auditTableBody">
+            <tr><td colspan="4" class="empty">Loading audit log…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">School Furniture Planning System &nbsp;·&nbsp; Admin Panel</div>
+  </div>
+
+  <script>
+    let allUsers = [];
+    let currentUserId = null;
+
+    function showMsg(el, text, type) {
+      el.textContent = text;
+      el.className = `msg ${type}`;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    async function loadUsers() {
+      const tbody = document.getElementById('userTableBody');
+
+      const { data, error } = await _db
+        .from('profiles')
+        .select('id, username, role')
+        .order('username', { ascending: true });
+
+      console.log('loadUsers result:', { data, error });
+
+      if (error) {
+        console.error('loadUsers error:', error.message);
+        tbody.innerHTML = `<tr><td colspan="4" class="empty" style="color:#991b1b;">Failed to load accounts: ${error.message}</td></tr>`;
+        return;
+      }
+
+      if (!data) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No data returned.</td></tr>';
+        return;
+      }
+
+      allUsers = data;
+      document.getElementById('userCount').textContent = `${data.length} account${data.length !== 1 ? 's' : ''}`;
+
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No accounts found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(u => `
+        <tr>
+          <td><strong>${escapeHtmlLocal(u.username)}</strong></td>
+          <td><span class="badge ${u.role}">${u.role}</span></td>
+          <td style="color:var(--muted);font-size:11px;">${u.id}</td>
+          <td style="text-align:right;">
+            ${u.id === currentUserId
+              ? '<span style="color:var(--muted);font-size:12px;">Current account</span>'
+              : `<button class="danger" onclick="deleteUser('${u.id}','${escapeHtmlLocal(u.username)}')">Delete</button>`
+            }
+          </td>
+        </tr>
+      `).join('');
+
+      // Populate password change dropdown
+      const pwSelect = document.getElementById('pwUsername');
+      pwSelect.innerHTML = data.map(u =>
+        `<option value="${u.id}">${escapeHtmlLocal(u.username)} (${u.role})</option>`
+      ).join('');
+    }
+
+    async function createUser() {
+      const username = document.getElementById('newUsername').value.trim().toLowerCase();
+      const password = document.getElementById('newPassword').value;
+      const role = document.getElementById('newRole').value;
+      const btn = document.getElementById('createUserBtn');
+      const errEl = document.getElementById('errorMsg');
+      const sucEl = document.getElementById('successMsg');
+
+      if (!username) return showMsg(errEl, 'Username is required.', 'error');
+      if (password.length < 6) return showMsg(errEl, 'Password must be at least 6 characters.', 'error');
+      if (!/^[a-z0-9_]+$/.test(username)) return showMsg(errEl, 'Username can only contain letters, numbers, and underscores.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+
+      const { data, error } = await _db.rpc('create_app_user', {
+        p_username: username,
+        p_password: password,
+        p_role: role
+      });
+
+      btn.disabled = false;
+      btn.textContent = '+ Create Account';
+
+      if (error) {
+        showMsg(errEl, error.message.includes('already exists') ? 'Username already exists.' : `Error: ${error.message}`, 'error');
+        return;
+      }
+
+      document.getElementById('newUsername').value = '';
+      document.getElementById('newPassword').value = '';
+      showMsg(sucEl, `Account "${username}" created successfully as ${role}.`, 'success');
+      await dbLogAction('CREATE_USER', `Created ${role} account: ${username}`);
+      loadUsers();
+    }
+
+    async function deleteUser(userId, username) {
+      if (!confirm(`Delete account "${username}"? This cannot be undone.`)) return;
+
+      const { error } = await _db.rpc('delete_app_user', { p_user_id: userId });
+
+      if (error) {
+        showMsg(document.getElementById('errorMsg'), `Error: ${error.message}`, 'error');
+        return;
+      }
+
+      showMsg(document.getElementById('successMsg'), `Account "${username}" deleted.`, 'success');
+      await dbLogAction('DELETE_USER', `Deleted account: ${username}`);
+      loadUsers();
+      loadAuditLog();
+    }
+
+    async function changePassword() {
+      const userId = document.getElementById('pwUsername').value;
+      const newPw = document.getElementById('newPw').value;
+      const confirmPw = document.getElementById('confirmPw').value;
+      const sucEl = document.getElementById('pwSuccessMsg');
+      const errEl = document.getElementById('pwErrorMsg');
+      const btn = document.getElementById('changePwBtn');
+
+      if (newPw.length < 6) return showMsg(errEl, 'Password must be at least 6 characters.', 'error');
+      if (newPw !== confirmPw) return showMsg(errEl, 'Passwords do not match.', 'error');
+
+      btn.disabled = true;
+      btn.textContent = 'Updating…';
+
+      const { error } = await _db.rpc('update_app_user_password', {
+        p_user_id: userId,
+        p_password: newPw
+      });
+
+      btn.disabled = false;
+      btn.textContent = 'Update Password';
+
+      if (error) {
+        showMsg(errEl, `Error: ${error.message}`, 'error');
+        return;
+      }
+
+      document.getElementById('newPw').value = '';
+      document.getElementById('confirmPw').value = '';
+      const username = allUsers.find(u => u.id === userId)?.username || '';
+      showMsg(sucEl, `Password updated for "${username}".`, 'success');
+      await dbLogAction('UPDATE_PASSWORD', `Password changed for: ${username}`);
+    }
+
+    function escapeHtmlLocal(value) {
+      return String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    async function loadAuditLog() {
+      const tbody = document.getElementById('auditTableBody');
+      const userFilter = document.getElementById('auditUserFilter').value;
+
+      let query = _db
+        .from('audit_log')
+        .select('id, username, action, details, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (userFilter) query = query.eq('username', userFilter);
+
+      const { data, error } = await query;
+
+      if (error) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty" style="color:#991b1b;">Error: ${error.message}</td></tr>`;
+        return;
+      }
+
+      if (!data || !data.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">No activity recorded yet.</td></tr>';
+        return;
+      }
+
+      // Populate user filter dropdown
+      const auditFilter = document.getElementById('auditUserFilter');
+      const currentFilter = auditFilter.value;
+      const users = [...new Set(data.map(r => r.username))].sort();
+      auditFilter.innerHTML = '<option value="">All Users</option>' +
+        users.map(u => `<option value="${escapeHtmlLocal(u)}" ${currentFilter === u ? 'selected' : ''}>${escapeHtmlLocal(u)}</option>`).join('');
+
+      const actionColors = {
+        'SAVE_SCHOOL':   { bg: '#eff6ff', color: '#1d4ed8' },
+        'DELETE_SCHOOL': { bg: '#fee2e2', color: '#991b1b' },
+        'BULK_SAVE':     { bg: '#f0fdf4', color: '#166534' },
+        'CREATE_USER':   { bg: '#fef3c7', color: '#92400e' },
+        'DELETE_USER':   { bg: '#fee2e2', color: '#991b1b' },
+        'UPDATE_PASSWORD': { bg: '#f5f3ff', color: '#5b21b6' },
+      };
+
+      tbody.innerHTML = data.map(row => {
+        const style = actionColors[row.action] || { bg: '#f9fafb', color: '#374151' };
+        const date = new Date(row.created_at);
+        const timeStr = date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+          + ' ' + date.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+        return `
+          <tr>
+            <td style="white-space:nowrap;color:var(--muted);font-size:12px;">${timeStr}</td>
+            <td><strong>${escapeHtmlLocal(row.username)}</strong></td>
+            <td>
+              <span style="background:${style.bg};color:${style.color};border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700;">
+                ${escapeHtmlLocal(row.action)}
+              </span>
+            </td>
+            <td style="color:var(--muted);font-size:12px;">${escapeHtmlLocal(row.details || '—')}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function clearAuditLog() {
+      if (!confirm('Clear the entire audit log? This cannot be undone.')) return;
+      const { error } = await _db.from('audit_log').delete().neq('id', 0);
+      if (error) { alert('Error: ' + error.message); return; }
+      await dbLogAction('CLEAR_AUDIT_LOG', 'Audit log was cleared by admin');
+      loadAuditLog();
+    }
+
+    document.getElementById('refreshAuditBtn').addEventListener('click', loadAuditLog);
+    document.getElementById('clearAuditBtn').addEventListener('click', clearAuditLog);
+    document.getElementById('auditUserFilter').addEventListener('change', loadAuditLog);
+
+    document.getElementById('createUserBtn').addEventListener('click', createUser);
+    document.getElementById('changePwBtn').addEventListener('click', changePassword);
+
+    // Boot — poll until session is available, then load
+    async function boot() {
+      let session = null;
+      // Try up to 10 times with 300ms gap (3 seconds total)
+      for (let i = 0; i < 10; i++) {
+        const { data } = await _db.auth.getSession();
+        if (data.session) { session = data.session; break; }
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      if (!session) { window.location.href = 'login.html'; return; }
+
+      const { data: profile } = await _db
+        .from('profiles').select('role, username').eq('id', session.user.id).single();
+
+      if (!profile) { window.location.href = 'login.html'; return; }
+      if (profile.role !== 'admin') { window.location.href = 'index.html'; return; }
+
+      injectUserBar(profile.username, profile.role);
+      currentUserId = session.user.id;
+      await loadUsers();
+      await loadAuditLog();
+    }
+
+    boot();
+  </script>
+  <script src="theme.js"></script>
+</body>
+</html>
